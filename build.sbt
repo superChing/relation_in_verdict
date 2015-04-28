@@ -15,12 +15,15 @@ resolvers ++= Seq(
 
 
 libraryDependencies ++= Seq(
+  "org.apache.spark" %% "spark-mllib" % "1.3.1",
+  "org.scalaj" %% "scalaj-http" % "1.1.4",
   "org.scala-lang.modules" %% "scala-pickling" % "0.10.0",
   "org.scalatest" %% "scalatest" % "2.2.4" % "test",
   "edu.stanford.nlp" % "stanford-corenlp" % "3.5.1",
   //  "edu.stanford.nlp" % "stanford-corenlp" % "3.5.1" classifier "models",
   "org.scalanlp" %% "breeze" % "0.11.2",
   "com.typesafe.play" %% "play-json" % "2.4.0-M3"
+
 )
 
 //unmanagedClasspath += baseDirectory.value / ""

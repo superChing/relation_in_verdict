@@ -4,34 +4,19 @@ package petproject.nlp.relation_extraction
  * Author: Watson Lin
  * Date: 15/4/14
  */
-class DistantSupervisor {
-//  val kb: KB_Reader = ???
+class DistantSupervisor() {
+  val relationEx = KB.getRelationExamples()
 
-  
-  def genCandidateRelation(doc: Document): Document = {
-    doc.copy(sentences = doc.sentences.map(genCandidateRelation))
-  }
-
-  def genCandidateRelation(sent: Sentence): Sentence = {
-    def entityPairs(entities: Seq[EntityMention]) = {
-      val eWithI = entities.zipWithIndex
-      for (e1 <- eWithI; e2 <- eWithI; if e1._2 != e2._2) yield {(e1, e2)}
+  def annotateRelations(sentence: Sentence) = {
+    val relations = sentence.relationMentions.map { r =>
+      val relationLabel = relationEx.getRelation(r.parent.mentionString(sentence), r.child.mentionString(sentence))
+      relationLabel match {
+        case Some(pid) => r.copy(label = Option(pid))
+        case None => r
+      }
     }
-
-    val relations = entityPairs(sent.entityMentions).map {
-      case ((e1, idx1), (e2, idx2)) => RelationMention(None, idx1, idx2)
-    }
-    sent.copy(relationMentions = relations.toIndexedSeq)
+    sentence.copy(relationMentions = relations)
   }
-
-  def annotateRelations(Sentence:Sentence)={
-//       Sentence.relationMentions.foreach{}
-  }
-
-
-
-
 
 
 }
-
