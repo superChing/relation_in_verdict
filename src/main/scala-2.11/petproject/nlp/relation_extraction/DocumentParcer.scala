@@ -91,7 +91,6 @@ object DocumentParcer extends DocumentParcer {
     //      case "fnlp" => new FNLP()
     case "stanfordnlp" | "stanford" => new StanfordNLP()
   }
-
 }
 
 
@@ -123,13 +122,13 @@ class StanfordNLP() extends DocumentParcer {
         }.toVector
 
         val sentence = sentenceAnno.get(classOf[TextAnnotation])
-        val dep = sentenceAnno.get(classOf[CollapsedCCProcessedDependenciesAnnotation])
-        Sentence(tokens, dep.toString(SemanticGraph.OutputFormat.LIST).lines.toList)
+//        val dep = sentenceAnno.get(classOf[CollapsedCCProcessedDependenciesAnnotation])
+//        dep.toString(SemanticGraph.OutputFormat.LIST).lines.toList
+        Sentence(tokens, Nil)
     }.toVector
 
     Document(sentences, Option(docID))
   }
-
 }
 
 

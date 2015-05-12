@@ -21,7 +21,7 @@ class DocumentParcerTest extends FunSuite {
     val parser = DocumentParcer.using("stanford")
     val parsed1 = parser.parseDocument(text)
     //    val parsed2 = DocumentParcer.annotateEntityMention(parsed1)
-//    println(parsed1)
+    //    println(parsed1)
     println(Json.prettyPrint(Json.toJson(parsed1)))
   }
 
@@ -33,14 +33,14 @@ class DocumentParcerTest extends FunSuite {
       null)
 
     val sent2 = DocumentParcer.annotateEntityMention(sent)
-   println( Json.prettyPrint(Json.toJson(sent2)))
+    println(Json.prettyPrint(Json.toJson(sent2)))
     //assert  ... by manual checking
   }
 
   test("assign entities") {
     val doc = DocumentParcer.annotateEntityMention(DocumentFixture.parsedDoc)
-    println(  Json.prettyPrint(Json.toJson(doc)))
-    val mentions=doc.sentences.flatMap(sent=>sent.entityMentions.map(_.mentionString(sent)))
+    println(Json.prettyPrint(Json.toJson(doc)))
+    val mentions = doc.sentences.flatMap(sent => sent.entityMentions.map(_.mentionString(sent)))
     println("mentions = " + mentions)
   }
 
@@ -49,10 +49,17 @@ class DocumentParcerTest extends FunSuite {
   ignore("generate Relations") {
     val docFixture = DocumentFixture.docWithEntityMention
     val doc = DocumentParcer.genCandidateRelation(docFixture)
-//    val doc=doc.sentences.map(sent => sent.relationMentions)
-    println(  Json.prettyPrint(Json.toJson(doc)))
+    //    val doc=doc.sentences.map(sent => sent.relationMentions)
+    println(Json.prettyPrint(Json.toJson(doc)))
   }
 
+  test("string to arc") {
+    val arcs=Dependency.stanfordString2Arcs(List("root(ROOT-0, 僱于-3)", "nsubj(僱于-3, 柯文哲-1)"))
+    assert(arcs.length==2)
+    assert(arcs(0)==Arc(0,3,Some("root")))
+    assert(arcs(1)==Arc(3,1,Some("nsubj")))
+
+  }
 }
 
 
@@ -88,6 +95,15 @@ object DocumentFixture {
         )
       })
 
+  val docWithRelation =
+    parsedDoc.copy(
+      sentences = parsedDoc.sentences.map {
+        sent => sent.copy(
+          relationMentions = Vector(
+            RelationMention(Some(108), EntityMention(None, "PERSON", 0, 0), EntityMention(None, "ORG", 3, 4)),
+            RelationMention(None, EntityMention(None, "ORG", 3, 4), EntityMention(None, "PERSON", 0, 0)))
+        )
+      })
 
   //  Document(Vector(
   //    Sentence(

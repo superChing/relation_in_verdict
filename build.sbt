@@ -22,8 +22,8 @@ libraryDependencies ++= Seq(
   "edu.stanford.nlp" % "stanford-corenlp" % "3.5.1",
   //  "edu.stanford.nlp" % "stanford-corenlp" % "3.5.1" classifier "models",
   "org.scalanlp" %% "breeze" % "0.11.2",
-  "com.typesafe.play" %% "play-json" % "2.4.0-M3"
-
+  "com.typesafe.play" %% "play-json" % "2.4.0-M3" ,
+"com.github.nscala-time" %% "nscala-time" % "2.0.0"
 )
 
 //unmanagedClasspath += baseDirectory.value / ""
