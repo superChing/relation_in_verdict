@@ -13,7 +13,7 @@ object RelationFeatureExtractor {
 
   val htf = new HashingTF(10000)
 
-  def apply(corpus: Corpus): Iterable[LabeledPoint] = {
+  def apply(corpus: Iterable[Document]): Iterable[LabeledPoint] = {
     for {
       doc <- corpus
       sent <- doc.sentences
@@ -28,49 +28,18 @@ object RelationFeatureExtractor {
     val features = ListBuffer[String]()
     val tokens = sent.tokens
 
-    val tokensInParentMention = tokens.slice(rel.parent.startIdx, rel.parent.endIdxInclusive)
-    val tokensInChildMention = tokens.slice(rel.child.startIdx, rel.child.endIdxInclusive)
+    val parent = rel.getParentEntity(sent)
+    val child = rel.getChildEntity(sent)
+    val tokensInParentMention = tokens.slice(parent.startIdx, parent.endIdx)
+    val tokensInChildMention = tokens.slice(child.startIdx, child.endIdx)
 
-    //n-gram words in mentions
-    features ++= upToNgram(tokensInParentMention.map(_.word), 2).map(t => s"${t._1}words_in_parent=${t._2}")
-    features ++= upToNgram(tokensInChildMention.map(_.word), 2).map(t => s"${t._1}words_in_child=${t._2}")
-
-    //n-gram POS in mentions
-    features ++= upToNgram(tokensInParentMention.map(_.posTag), 2).map(t => s"${t._1}posTags_in_parent=${t._2}")
-    features ++= upToNgram(tokensInChildMention.map(_.posTag), 2).map(t => s"${t._1}posTags_in_child=${t._2}")
-
-    //n-gram NER in mentions
-    features ++= upToNgram(tokensInParentMention.map(_.nerTag), 2).map(t => s"${t._1}nerTags_in_parent=${t._2}")
-    features ++= upToNgram(tokensInChildMention.map(_.nerTag), 2).map(t => s"${t._1}nerTags_in_child=${t._2}")
-
-    //word length in mentions
-    features += s"word_length_in_parent=${tokensInParentMention.map(_.word).length}"
-    features += s"word_length_in_child=${tokensInChildMention.map(_.word).length}"
-
-    //char length in mentions
-    features += s"char_length_in_parent=${tokensInParentMention.map(_.word).map(_.length).length}"
-    features += s"char_length_in_child=${tokensInChildMention.map(_.word).map(_.length).length}"
+    //TODO pass buffer in for speed
+    features ++= featuresInMention(tokensInParentMention)("parent")
+    features ++= featuresInMention(tokensInChildMention)("child")
 
 
-    // words , pos,ner around mention
-    //filter out null at last
-    (1 to 3) foreach { i =>
-      //parent
-      features += tokens.lift(rel.parent.startIdx - i).map(t => s"word_L${i}_to_parent=${t.word}").orNull
-      features += tokens.lift(rel.parent.startIdx - i).map(t => s"pos_L${i}_to_parent= ${t.posTag}").orNull
-      features += tokens.lift(rel.parent.startIdx - i).map(t => s"ner_L${i}_to_parent= ${t.nerTag}").orNull
-      features += tokens.lift(rel.parent.endIdxInclusive + i).map(t => s"word_R${i}_to_parent=${t.word}").orNull
-      features += tokens.lift(rel.parent.endIdxInclusive + i).map(t => s"pos_R${i}_to_parent= ${t.posTag}").orNull
-      features += tokens.lift(rel.parent.endIdxInclusive + i).map(t => s"ner_R${i}_to_parent= ${t.nerTag}").orNull
-
-      //child
-      features += tokens.lift(rel.child.startIdx - i).map(t => s"word_L${i}_to_child=${t.word}").orNull
-      features += tokens.lift(rel.child.startIdx - i).map(t => s"pos_L${i}_to_child= ${t.posTag}").orNull
-      features += tokens.lift(rel.child.startIdx - i).map(t => s"ner_L${i}_to_child= ${t.nerTag}").orNull
-      features += tokens.lift(rel.child.endIdxInclusive + i).map(t => s"word_R${i}_to_child=${t.word}").orNull
-      features += tokens.lift(rel.child.endIdxInclusive + i).map(t => s"pos_R${i}_to_child= ${t.posTag}").orNull
-      features += tokens.lift(rel.child.endIdxInclusive + i).map(t => s"ner_R${i}_to_child= ${t.nerTag}").orNull
-    }
+    featureAroundMention(features,parent,sent)("parent")
+    featureAroundMention(features,child,sent)("child")
 
 
     //combinations
@@ -78,9 +47,10 @@ object RelationFeatureExtractor {
     //is capital start
 
     //n-gram between mentions
-    val tokensBetween = if (rel.parent.endIdxInclusive > rel.child.startIdx)
-                          tokens.slice(rel.parent.endIdxInclusive, rel.child.startIdx)
-                        else tokens.slice(rel.child.endIdxInclusive, rel.parent.startIdx)
+    val tokensBetween = if (parent.endIdx < child.startIdx)
+                          tokens.slice(parent.endIdx, child.startIdx)
+                        else
+                          tokens.slice(child.endIdx, parent.startIdx)
 
     val words_between = tokensBetween.map(_.word)
     features ++= upToNgram(tokensBetween.map(_.word), 3).map(t => s"${t._1}words_between=${t._2}")
@@ -105,12 +75,47 @@ object RelationFeatureExtractor {
 
     features.filterNot(_ == null).toList
   }
+
+  def featureAroundMention(features: ListBuffer[String],entity:EntityMention,sent:Sentence)(tag:String): ListBuffer[String] = {
+    val tokens=sent.tokens
+    // words , pos,ner around mention
+    //filter out null at last
+    (1 to 3) foreach { i =>
+      features += tokens.lift(entity.startIdx - i).map(t => s"word_L${i}_to_${tag}=${t.word}").orNull
+      features += tokens.lift(entity.startIdx - i).map(t => s"pos_L${i}_to_${tag}= ${t.posTag}").orNull
+      features += tokens.lift(entity.startIdx - i).map(t => s"ner_L${i}_to_${tag}= ${t.nerTag}").orNull
+      features += tokens.lift(entity.endIdx - 1 + i).map(t => s"word_R${i}_to_${tag}=${t.word}").orNull
+      features += tokens.lift(entity.endIdx - 1 + i).map(t => s"pos_R${i}_to_${tag}= ${t.posTag}").orNull
+      features += tokens.lift(entity.endIdx - 1 + i).map(t => s"ner_R${i}_to_${tag}= ${t.nerTag}").orNull
+    }
+
+    features
+  }
+
+  def featuresInMention(tokensInMention: IndexedSeq[Token])(tag: String): ListBuffer[String] = {
+    val features = ListBuffer[String]()
+
+    //N-Gram
+    //n-gram words in mentions
+    features ++= upToNgram(tokensInMention.map(_.word), 2).map(t => s"${t._1}words_in_${tag}=${t._2}")
+    //n-gram POS in mentions
+    features ++= upToNgram(tokensInMention.map(_.posTag), 2).map(t => s"${t._1}posTags_in_${tag}=${t._2}")
+    //n-gram NER in mentions
+    features ++= upToNgram(tokensInMention.map(_.nerTag), 2).map(t => s"${t._1}nerTags_in_${tag}=${t._2}")
+
+    //length
+    //word length in mentions
+    features += s"word_length_in_${tag}=${tokensInMention.map(_.word).length}"
+    //char length in mentions
+    features += s"char_length_in_${tag}=${tokensInMention.map(_.word.length).sum}"
+
+  }
   def upToNgram(seq: Seq[String], n: Int): Iterator[(Int, String)] = {
     val _n = Math.min(n, seq.length)
     _n match {
       case 0 => Iterator.empty
       case _ => seq.sliding(_n).map { window => (_n, window.mkString(" ")) } ++
-        upToNgram(seq, _n - 1)
+                upToNgram(seq, _n - 1)
     }
   }
 

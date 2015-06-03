@@ -1,30 +1,35 @@
 package petproject.nlp.relation_extraction
 
-import org.scalatest.FlatSpec
+import org.scalatest.{FunSuite, FlatSpec}
 
 /**
  * Author: Wei-Ching Lin
  * Date: 15/4/21
  */
-class KBDumpPreprocessorTest extends FlatSpec {
+class RelationDownloaderTest extends FunSuite {
 
-  "getLabel" should "fetch corresponding labels from Wikidata for the provided QIDs" ignore {
-    val labels = KBDumpPreprocessor.getLabel(List(5210392, 49108, 5210392, 13371))
+
+  ignore("getLabel fetch corresponding QID labels from Wikidata for the provided QIDs" ) {
+    import RelationDownloader.RemoteKB._
+    val qids=List(5210392, 49108, 5210392, 13371)
+    val req=mkRequest(qids,"zh")
+    val labels = parseLabel(qids,req.asString.body)
+
     println(labels)
   }
 
 
   //TODO need `getLabel` mock, don't do testing with internet connection.
-  "labelPairs" should "label each qid Tuple2 in length smaller than #batch " in {
-    val labels = KBDumpPreprocessor.namePairs(
+  ignore("labelPairs label each qid Tuple2 in length smaller than #batch " ) {
+    val labels = RelationDownloader.namePairs(
       List(
         (525169, 49108), (5210392, 13371), (525169, 525169)
       ).iterator)
     assert(labels.length == 3)
   }
 
-  it should s"label each qid Tuple2 in length larger than #batch 20" in {
-    val labels = KBDumpPreprocessor.namePairs(List(
+  ignore( "labelPairs label each qid Tuple2 in length larger than #batch 20" ) {
+    val labels = RelationDownloader.namePairs(List(
       (525169, 49108), (5210392, 13371), (525169, 49108), (5210392, 13371),
       (525169, 49108), (5210392, 13371), (525169, 49108), (5210392, 13371),
       (525169, 49108), (5210392, 13371), (525169, 49108), (5210392, 13371),
