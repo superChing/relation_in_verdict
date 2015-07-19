@@ -5,7 +5,8 @@ package petproject.nlp.relation_extraction
  */
 
 /*
- TODO refactor these component to nested type ? or get upper dependence by parameter? or use pimp lib to keeping clean ADT ? or Chicken Egg pattern ?
+ TODO refactor these component to nested type ? or get upper dependence by parameter? or use pimp lib to keeping clean ADT
+  ? or Chicken Egg pattern ?
 
   */
 
@@ -63,10 +64,25 @@ case class RelationMention(label: Option[Int], parentIdx: Int, childIdx: Int) {
   def getChildEntity(sent: Sentence) = sent.entityMentions(childIdx)
 }
 
+
+/**
+ * TODO refactor null to None and make entity and relation building function as parameter
+ *
+ */
 case class Sentence(tokens: IndexedSeq[Token],
                     dependencies: Option[List[String]] = None,
-                    entityMentions: IndexedSeq[EntityMention] = IndexedSeq.empty, //TODO default to empty is not decent
-                    relationMentions: IndexedSeq[RelationMention] = IndexedSeq.empty)
+                    entityMentions: IndexedSeq[EntityMention] = null,
+                    relationMentions: IndexedSeq[RelationMention] = null) {
+
+  override def toString: String = "\n" +
+                                  "Sentence(" + "\n\t" +
+                                  tokens.toString + ",\n\t" +
+                                  dependencies.toString + ",\n\t" +
+                                  Option(entityMentions).toString + ",\n\t" +
+                                  Option(relationMentions).toString + ",\n"+
+                                  ")"
+
+}
 
 /**
  * parsed document
@@ -92,7 +108,6 @@ class NavigableDocument(doc: Document) {
   lazy val token2idxInSent = doc.sentences.flatMap(s => s.tokens.zipWithIndex).toMap
 
 
-
   implicit class NavigableToken(token: Token) {
     def sentence = token2sent(token)
     def indexInSentence = token2idxInSent(token)
@@ -103,7 +118,7 @@ class NavigableDocument(doc: Document) {
     //    def prev = document.sentences.lift(indexInDocument - 1)
     def indexInDocument = sent2idx(sentence)
   }
-  
+
 }
 
 

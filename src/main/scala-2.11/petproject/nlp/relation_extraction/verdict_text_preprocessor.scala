@@ -16,29 +16,36 @@ object verdict_text_preprocessor {
   val stopwords = Set( """\s*中\s*華\s*民\s*國.*年.*月.*日\s*""")
   val skipwords = Set("┌", "│", "├", "└")
 
-  def extractMainText(): Iterator[String] = {
+  /**
+   * @return file name, string (whole text)
+   */
+  def extractMainText(): Iterator[(String, String)] = {
     val files = new File("/Users/apple/verdict").listFiles.filter(_.getName.contains("csv"))
-    val lines = files.toIterator.map {
-      file => extract_lines(Source.fromFile(file).getLines()).mkString + "\n"
+    val file$text = files.toIterator.map {
+      file => (file.getName ,extract_maintext(Source.fromFile(file).getLines()).mkString + "\n")
     }
-    lines
+    file$text
+  }
+  def extractMainText(file:String): String = {
+    extract_maintext(Source.fromFile(file).getLines()).mkString + "\n"
   }
 
-  private def extract_lines(lines: Iterator[String]): Iterator[String] =
+  private def extract_maintext(lines: Iterator[String]): Iterator[String] =
     lines.map(_.trim)
       .dropWhile(l => !keywords.exists(l.matches))
       .takeWhile(l => !stopwords.exists(l.matches))
       .filter(l => !keywords.exists(l.matches))
       .filter(l => !skipwords.exists(l.contains))
+
   def save(lines: Iterator[String]) = {
     val file = new File("/Users/apple/all_verdicts.txt")
     val bw = new BufferedWriter(new FileWriter(file))
     lines.foreach(bw.append)
     bw.close()
   }
-  //    println(extract_lines(Source.fromFile("/Users/apple/verdict/TaoyuanLo_20140817_105544.csv").getLines()).mkString)
+  //    println(extract_maintext(Source.fromFile("/Users/apple/verdict/TaoyuanLo_20140817_105544.csv").getLines()).mkString)
   //    println(lines.take(2).mkString)
   //  val test = Iterator("abc", " 主  文 ", "行1, 主文 。", "【附表甲】┌─┬───────"," 事  實 ", "行2", "中 華 民 國1年 2月3日 ")
-  //  println(extract_lines(test).toList)
+  //  println(extract_maintext(test).toList)
 
 }

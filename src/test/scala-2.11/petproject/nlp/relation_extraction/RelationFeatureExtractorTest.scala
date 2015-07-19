@@ -11,7 +11,7 @@ import scala.collection.mutable.ListBuffer
 class RelationFeatureExtractorTest extends FunSuite {
 
   test("test etracting n-gram from string sequence") {
-    val res = RelationFeatureExtractor.upToNgram(List("a", "b", "c"), 4)
+    val res = (new AnyRef with FeatureExtractor).upToNgram(List("a", "b", "c"), 4)
     assert(res.mkString(",") == "(3,a b c),(2,a b),(2,b c),(1,a),(1,b),(1,c)")
   }
 
@@ -48,28 +48,27 @@ class RelationFeatureExtractorTest extends FunSuite {
     RelationFeatureExtractor.featureAroundMention(featuresBuffer, parent, sent)("test")
     val features = featuresBuffer.toList
 
-//    println(s"features =\n ${features.mkString("\n")}")
-//    println("size = " + features.size)
-        assert(features.count(_ != null) == 9)
+    //    println(s"features =\n ${features.mkString("\n")}")
+    //    println("size = " + features.size)
+    assert(features.count(_ != null) == 9)
   }
 
-  test("get right features"){
-    val features=RelationFeatureExtractor.extractFeatures(rel,sent)
-//    println(s"features =\n ${features.mkString("\n")}")
-//        println("size = " + features.size)
+  test("get right features") {
+    val features = RelationFeatureExtractor.extractFeatures(rel, sent)
+    //    println(s"features =\n ${features.mkString("\n")}")
+    //        println("size = " + features.size)
 
     assert(features.size == 48)
-
   }
 
-    test("get right LabeledPoint from the corpus"){
-      val corpus:Corpus=Seq(Document(Vector(sent,sent)))
-      val points=RelationFeatureExtractor(corpus).toList
-//      println("point="+res.toList)
-//      println("size="+ res.toList.head.features.asInstanceOf[SparseVector].indices.length)
+  test("get right LabeledPoint from the corpus") {
+    val corpus: Corpus = Seq(Document(Vector(sent, sent)))
+    val points = RelationFeatureExtractor(corpus).toList
+//    println("point=" + points.toList)
+//    println("size=" + points.toList.head.features.asInstanceOf[SparseVector].indices.length)
 
-      assert(points(0) == points(1))
-      assert(points(0).label == -1)
-    }
+    assert(points(0) == points(1))
+    assert(points(0).label == -1)
+  }
 
 }

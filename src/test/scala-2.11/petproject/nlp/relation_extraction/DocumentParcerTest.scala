@@ -18,18 +18,18 @@ class DocumentParcerTest extends FunSuite {
   val text = new ChineseTrans().toSimp("柯文哲受僱於台灣台北市政府，也曾任職於台大醫院。蘋果公司的手機電池要充電。")
 
   test("sentence splitter") {
-    val sents = DocumentParcer.split2ChineseSentence("我我我，我我。我...我，我？!！我。")
-    assert(sents sameElements Iterator("我我我，我我。", "我...我，我？!！", "我。"))
+    val sents = DocumentParcer.split2ChineseSentence("我我我，我我，我，我,我。我...我，我？!！ 我。。",2).toList
+    assert(sents == List("我我我，我我，", "我，我,", "我。", "我...我，我？!！", "我。。"))
   }
 
-  ignore("parseDocument using Stanford NLP") {
-    val parser = DocumentParcer.using("stanford")
+  test("observe parseDocument using Stanford NLP") {
+    val parser = DocumentParcer.using("snlpzh")
     val parsed1 = parser.parseDocument(text)
-    //    println(parsed1)
-    println(Json.prettyPrint(Json.toJson(parsed1)))
+        println(parsed1)
+//    println(Json.prettyPrint(Json.toJson(parsed1)))
   }
 
-  ignore("parseDocument using FNLP") {
+  ignore("observe parseDocument using FNLP") {
     val parser = DocumentParcer.using("FNLP")
     val parsed1 = parser.parseDocument(text)
     println(parsed1)
@@ -41,7 +41,7 @@ class DocumentParcerTest extends FunSuite {
     object MockParser extends DocumentParcer {
       override val NoneNerClass = "O"
       override val NounClasses = Set("N")
-      override def parseDocument(doc: String, docID: String) = ???
+      override def parseDocument(doc: String, docID: Option[String]) = ???
     }
 
     //LOC+N could be an named entity

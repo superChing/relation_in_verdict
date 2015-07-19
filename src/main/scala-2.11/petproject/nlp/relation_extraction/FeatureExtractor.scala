@@ -2,6 +2,7 @@ package petproject.nlp.relation_extraction
 
 import org.apache.spark.mllib.feature.HashingTF
 import org.apache.spark.mllib.regression.LabeledPoint
+import org.fnlp.nlp.cn.ChineseTrans
 
 import scala.collection.mutable.ListBuffer
 
@@ -9,7 +10,32 @@ import scala.collection.mutable.ListBuffer
  * Author: Wei-Ching Lin
  */
 
-object RelationFeatureExtractor {
+/**
+ * for relation detector
+ */
+class SentenceFeatureExtractor(numFeatureHashing:Int=10000) extends FeatureExtractor {
+  val htf = new HashingTF(numFeatureHashing)
+  def apply(label: Int, sentence: String): LabeledPoint = {
+    val ct = new ChineseTrans()
+    val zh_sent = ct.toSimp(sentence)
+    val parser = DocumentParcer.using("snlpzh")
+    val parsed = parser.parseDocument(zh_sent)
+    apply(parsed.sentences.head, label)
+  }
+  def apply(sentence: Sentence, label: Int): LabeledPoint = {
+    val features = ListBuffer[String]()
+    //    val relationFeatures = sentence.relationMentions.zipWithIndex.map { case (rel, idx) =>
+    //      RelationFeatureExtractor.extractFeatures(rel, sentence).map(str => idx + "_" + str)
+    //    }
+    nGram(features, sentence.tokens, 3)("in_sentence")
+    LabeledPoint(label, htf.transform(features))
+  }
+}
+
+/**
+ * feature hashing,
+ */
+object RelationFeatureExtractor extends FeatureExtractor {
 
   val htf = new HashingTF(10000)
 
@@ -24,6 +50,7 @@ object RelationFeatureExtractor {
     }
   }
 
+
   def extractFeatures(rel: RelationMention, sent: Sentence): List[String] = {
     val features = ListBuffer[String]()
     val tokens = sent.tokens
@@ -34,12 +61,12 @@ object RelationFeatureExtractor {
     val tokensInChildMention = tokens.slice(child.startIdx, child.endIdx)
 
     //TODO pass buffer in for speed
-    features ++= featuresInMention(tokensInParentMention)("parent")
-    features ++= featuresInMention(tokensInChildMention)("child")
+    features ++= featuresInMention(tokensInParentMention)("in_parent")
+    features ++= featuresInMention(tokensInChildMention)("in_child")
 
 
-    featureAroundMention(features,parent,sent)("parent")
-    featureAroundMention(features,child,sent)("child")
+    featureAroundMention(features, parent, sent)("parent")
+    featureAroundMention(features, child, sent)("child")
 
 
     //combinations
@@ -52,32 +79,27 @@ object RelationFeatureExtractor {
                         else
                           tokens.slice(child.endIdx, parent.startIdx)
 
-    val words_between = tokensBetween.map(_.word)
-    features ++= upToNgram(tokensBetween.map(_.word), 3).map(t => s"${t._1}words_between=${t._2}")
 
-    val posTags_between = tokensBetween.map(_.posTag)
-    features ++= upToNgram(posTags_between, 3).map(t => s"${t._1}posTags_between=${t._2}")
-
-    val nerTags_between = tokensBetween.map(_.nerTag)
-    features ++= upToNgram(nerTags_between, 3).map(t => s"${t._1}nerTags_between=${t._2}")
+    nGram(features, tokensBetween, 3)("between_mentions")
 
     //lemma between mentions
-
+    val words_between = tokensBetween.map(_.word)
     //word length between mentions
-    features += s"word_length_between=${words_between.length}"
-
+    features += s"word_length_between_mentions=${words_between.length}"
     //char length between
-    features += s"char_length_between=${words_between.map(_.length).sum}"
+    features += s"char_length_between_mentions=${words_between.map(_.length).sum}"
 
     //shortest dependency path between mentions
 
     //keyword dictionary
 
+    //TODO get rid the null
     features.filterNot(_ == null).toList
   }
 
-  def featureAroundMention(features: ListBuffer[String],entity:EntityMention,sent:Sentence)(tag:String): ListBuffer[String] = {
-    val tokens=sent.tokens
+  def featureAroundMention(features: ListBuffer[String], entity: EntityMention, sent: Sentence)
+                          (tag: String): Unit = {
+    val tokens = sent.tokens
     // words , pos,ner around mention
     //filter out null at last
     (1 to 3) foreach { i =>
@@ -89,35 +111,43 @@ object RelationFeatureExtractor {
       features += tokens.lift(entity.endIdx - 1 + i).map(t => s"ner_R${i}_to_${tag}= ${t.nerTag}").orNull
     }
 
-    features
   }
 
-  def featuresInMention(tokensInMention: IndexedSeq[Token])(tag: String): ListBuffer[String] = {
+  def featuresInMention(tokens: IndexedSeq[Token])(tag: String): ListBuffer[String] = {
     val features = ListBuffer[String]()
 
-    //N-Gram
-    //n-gram words in mentions
-    features ++= upToNgram(tokensInMention.map(_.word), 2).map(t => s"${t._1}words_in_${tag}=${t._2}")
-    //n-gram POS in mentions
-    features ++= upToNgram(tokensInMention.map(_.posTag), 2).map(t => s"${t._1}posTags_in_${tag}=${t._2}")
-    //n-gram NER in mentions
-    features ++= upToNgram(tokensInMention.map(_.nerTag), 2).map(t => s"${t._1}nerTags_in_${tag}=${t._2}")
+    nGram(features, tokens, 2)(tag)
 
     //length
     //word length in mentions
-    features += s"word_length_in_${tag}=${tokensInMention.map(_.word).length}"
+    features += s"word_length_in_${tag}=${tokens.map(_.word).length}"
     //char length in mentions
-    features += s"char_length_in_${tag}=${tokensInMention.map(_.word.length).sum}"
+    features += s"char_length_in_${tag}=${tokens.map(_.word.length).sum}"
 
   }
+
+
+}
+
+trait FeatureExtractor {
+
+  def nGram(features: ListBuffer[String], tokens: IndexedSeq[Token], n: Int)(tag: String): Unit = {
+    //N-Gram
+    //n-gram words
+    features ++= upToNgram(tokens.map(_.word), n).map(t => s"${t._1}words_${tag}=${t._2}")
+    //n-gram POS
+    features ++= upToNgram(tokens.map(_.posTag), n).map(t => s"${t._1}posTags_${tag}=${t._2}")
+    //n-gram NER
+    features ++= upToNgram(tokens.map(_.nerTag), n).map(t => s"${t._1}nerTags_${tag}=${t._2}")
+
+  }
+
   def upToNgram(seq: Seq[String], n: Int): Iterator[(Int, String)] = {
     val _n = Math.min(n, seq.length)
     _n match {
       case 0 => Iterator.empty
-      case _ => seq.sliding(_n).map { window => (_n, window.mkString(" ")) } ++
-                upToNgram(seq, _n - 1)
+      case _ => seq.sliding(_n).map { window => (_n, window.mkString(" ")) } ++ upToNgram(seq, _n - 1)
     }
   }
-
 
 }
